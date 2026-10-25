@@ -399,7 +399,6 @@ body {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: #0b0d11;
   border-right: 1px solid var(--border);
 }
 
@@ -994,7 +993,8 @@ body {
   justify-content: center;
   transition: opacity 0.2s, transform 0.2s, color 0.2s;
   color: var(--text-dim);
-  margin-left: 0.25rem;
+  align-self: center;
+  flex-shrink: 0;
   user-select: none;
 }
 

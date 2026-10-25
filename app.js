@@ -109,8 +109,11 @@ async function loadLibrary(requestGesture) {
     const res = await fetch("cine-liste.json", { cache: "no-store" });
     if (res.ok) {
       const fileLibrary = await res.json();
+      const deleted = getDeletedKeys();
       const byKey = new Map();
-      fileLibrary.forEach((item) => byKey.set(item.media_type + ":" + item.id, item));
+      fileLibrary.forEach((item) => {
+        if (!deleted.has(libKey(item))) byKey.set(libKey(item), item);
+      });
       cachedLibrary.forEach((item) => {
         const key = item.media_type + ":" + item.id;
         if (!byKey.has(key)) byKey.set(key, item);
@@ -137,6 +140,31 @@ async function loadLibraryFromHandle() {
   } catch (e) {
     library = [];
   }
+  // Suppressions faites pendant qu'aucun fichier n'était lié : elles s'appliquent
+  // aussi au fichier (retirées de la liste affichée, puis du fichier à la prochaine écriture).
+  const deleted = getDeletedKeys();
+  if (deleted.size) library = library.filter((item) => !deleted.has(libKey(item)));
+}
+
+// ---------- suppressions en attente ----------
+// Un film supprimé dans l'interface doit aussi disparaître de cine-liste.json.
+// Sans fichier lié, on ne peut pas y écrire : la suppression est mémorisée
+// ("cineDeleted") et appliquée à la prochaine écriture dans le fichier, au lieu
+// de laisser le film revenir à chaque fusion avec le fichier.
+function libKey(item) {
+  return item.media_type + ":" + item.id;
+}
+
+function getDeletedKeys() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem("cineDeleted") || "[]"));
+  } catch (e) {
+    return new Set();
+  }
+}
+
+function setDeletedKeys(keys) {
+  localStorage.setItem("cineDeleted", JSON.stringify([...keys]));
 }
 
 // Garantit une date d'insertion (added_at) à chaque film avant écriture : les
@@ -148,26 +176,60 @@ function stampMissingInsertDates() {
   });
 }
 
+// Écrit la bibliothèque dans le fichier lié. Le fichier est d'abord relu : il peut
+// contenir des films absents de la mémoire (session précédente, autre appareil),
+// qui sont conservés — sauf ceux supprimés dans l'interface. Ainsi, une
+// bibliothèque incomplète en mémoire n'écrase jamais le fichier.
+// Retourne { ok, added, removed } (films ajoutés au fichier / retirés du fichier).
 async function saveLibraryToHandle() {
-  if (!libraryHandle) return;
-  stampMissingInsertDates();
+  if (!libraryHandle) return { ok: false };
   const perm = await libraryHandle.requestPermission({ mode: "readwrite" });
   if (perm !== "granted") {
     toast("Permission d'écriture refusée");
-    return;
+    return { ok: false };
   }
+
+  let fileItems = [];
+  const text = await (await libraryHandle.getFile()).text();
+  if (text.trim()) {
+    try {
+      fileItems = JSON.parse(text);
+      if (!Array.isArray(fileItems)) throw new Error();
+    } catch (e) {
+      toast("Le fichier lié est illisible : il n'a pas été modifié");
+      return { ok: false };
+    }
+  }
+
+  const deleted = getDeletedKeys();
+  const merged = new Map();
+  let removed = 0;
+  fileItems.forEach((item) => {
+    if (deleted.has(libKey(item))) removed++;
+    else merged.set(libKey(item), item);
+  });
+  const fileKeys = new Set(fileItems.map(libKey));
+  let added = 0;
+  library.forEach((item) => {
+    const key = libKey(item);
+    if (deleted.has(key) || merged.has(key)) return;
+    merged.set(key, item);
+    if (!fileKeys.has(key)) added++;
+  });
+  library = [...merged.values()];
+  stampMissingInsertDates();
+
   const writable = await libraryHandle.createWritable();
   await writable.write(JSON.stringify(library, null, 2));
   await writable.close();
+  setDeletedKeys(new Set());
+  return { ok: true, added, removed };
 }
 
 async function persistLibrary() {
   stampMissingInsertDates();
-  if (libraryHandle) {
-    await saveLibraryToHandle();
-  } else {
-    localStorage.setItem("cineLibraryCache", JSON.stringify(library));
-  }
+  if (libraryHandle) await saveLibraryToHandle();
+  localStorage.setItem("cineLibraryCache", JSON.stringify(library));
 }
 
 async function addToLibrary(item) {
@@ -175,6 +237,8 @@ async function addToLibrary(item) {
     toast("Déjà dans la bibliothèque");
     return;
   }
+  const deleted = getDeletedKeys();
+  if (deleted.delete(libKey(item))) setDeletedKeys(deleted);
   library.push({ ...item, added_at: new Date().toISOString() });
   await persistLibrary();
   renderLibrary();
@@ -184,6 +248,9 @@ async function addToLibrary(item) {
 }
 
 async function removeFromLibrary(id, mediaType) {
+  const deleted = getDeletedKeys();
+  deleted.add(mediaType + ":" + id);
+  setDeletedKeys(deleted);
   library = library.filter((x) => !(x.id === id && x.media_type === mediaType));
   await persistLibrary();
   renderLibrary();
@@ -1685,40 +1752,17 @@ document.getElementById("exportFile").addEventListener("click", async () => {
       });
       await idbSet("libraryHandle", libraryHandle);
     }
-    const perm = await libraryHandle.requestPermission({ mode: "readwrite" });
-    if (perm !== "granted") {
-      toast("Permission d'écriture refusée");
-      return;
-    }
-
-    let existing = [];
-    const text = await (await libraryHandle.getFile()).text();
-    if (text.trim()) {
-      try {
-        existing = JSON.parse(text);
-        if (!Array.isArray(existing)) throw new Error();
-      } catch (e) {
-        toast("Le fichier existant est illisible : il n'a pas été modifié");
-        return;
-      }
-    }
-
-    const keyOf = (item) => item.media_type + ":" + item.id;
-    const merged = new Map(existing.map((item) => [keyOf(item), item]));
-    let added = 0;
-    library.forEach((item) => {
-      if (!merged.has(keyOf(item))) {
-        merged.set(keyOf(item), item);
-        added++;
-      }
-    });
-    library = [...merged.values()];
-    await saveLibraryToHandle();
+    const result = await saveLibraryToHandle();
+    if (!result.ok) return;
+    localStorage.setItem("cineLibraryCache", JSON.stringify(library));
     setFileStatus("Connecté : " + libraryHandle.name);
     renderLibrary();
     updateLibCount();
     refreshLibraryBadges();
-    toast(`${added} film(s) ajouté(s) à ${libraryHandle.name}`);
+    const parts = [];
+    if (result.added) parts.push(`${result.added} film(s) ajouté(s)`);
+    if (result.removed) parts.push(`${result.removed} film(s) retiré(s)`);
+    toast((parts.length ? parts.join(", ") : "Aucun changement") + " dans " + libraryHandle.name);
   } catch (err) {
     if (err.name !== "AbortError") toast("Erreur : " + err.message);
   }
@@ -1731,6 +1775,14 @@ document.getElementById("importFile").addEventListener("change", async (e) => {
     const text = await file.text();
     const imported = JSON.parse(text);
     if (!Array.isArray(imported)) throw new Error("format inattendu");
+    // L'import remplace la bibliothèque : ce qui n'est plus dans la liste doit
+    // aussi disparaître du fichier lié.
+    const importedKeys = new Set(imported.map(libKey));
+    const deleted = new Set([...getDeletedKeys()].filter((key) => !importedKeys.has(key)));
+    library.forEach((item) => {
+      if (!importedKeys.has(libKey(item))) deleted.add(libKey(item));
+    });
+    setDeletedKeys(deleted);
     library = imported;
     await persistLibrary();
     renderLibrary();
