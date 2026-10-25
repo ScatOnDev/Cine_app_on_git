@@ -1,0 +1,191 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mon Ciné</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+<link rel="stylesheet" href="style.css?v=16">
+
+<div class="filters-bar" id="filtersBar">
+  <form id="filters">
+    <div class="app-brand">
+      <h1>🎬 Mon Ciné</h1>
+      <button type="button" id="settingsBtn" class="btn-settings" title="Paramètres">⚙️</button>
+    </div>
+      <div class="filters-fields">
+       <div class="filters-fields-inner">
+        <div class="filter-group">
+          <input type="text" id="titleFilter" placeholder="Filtrer / Rechercher" autocomplete="off" aria-label="Filtrer par titre">
+        </div>
+
+        <div class="filter-group">
+          <div class="segmented" role="group" aria-label="Type" data-media-type="movie">
+            <span class="segmented-bg"></span>
+            <button type="button" class="segmented-btn active" data-value="movie">Films</button>
+            <button type="button" class="segmented-btn" data-value="tv">Séries</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <select id="noteMin" aria-label="Note">
+            <option value="">Notes</option>
+            <option value="1">note &gt; 1</option>
+            <option value="2">note &gt; 2</option>
+            <option value="3">note &gt; 3</option>
+            <option value="4">note &gt; 4</option>
+            <option value="5">note &gt; 5</option>
+            <option value="6">note &gt; 6</option>
+            <option value="7">note &gt; 7</option>
+            <option value="8">note &gt; 8</option>
+            <option value="9">note &gt; 9</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <div class="sort-tabs" id="sortSegmented" data-sort-by="date">
+            <button type="button" class="sort-tab" data-value="note">⭐ par Note</button>
+            <button type="button" class="sort-tab active" data-value="date">📅 par Date</button>
+            <span class="sort-indicator"></span>
+          </div>
+        </div>
+
+        <div class="filter-group genre-filter">
+          <button type="button" class="genre-toggle" id="genreToggle" aria-haspopup="listbox" aria-expanded="false" aria-label="Genres">Genres</button>
+          <div class="genre-menu" id="genreMenu" hidden></div>
+        </div>
+
+
+
+       </div>
+      </div>
+    </form>
+
+    <div class="quick-countries-bar" id="quickCountriesBar">
+      <button type="button" class="quick-country-btn" data-code="FR">
+        <img src="https://flagcdn.com/fr.svg" alt="France">
+        <span>France</span>
+      </button>
+      <button type="button" class="quick-country-btn" data-code="GB">
+        <img src="https://flagcdn.com/gb.svg" alt="Royaume-Uni">
+        <span>Royaume-Uni</span>
+      </button>
+      <button type="button" class="quick-country-btn" data-code="ES">
+        <img src="https://flagcdn.com/es.svg" alt="Espagne">
+        <span>Espagne</span>
+      </button>
+      <button type="button" class="quick-country-btn" data-code="IT">
+        <img src="https://flagcdn.com/it.svg" alt="Italie">
+        <span>Italie</span>
+      </button>
+      <button type="button" class="quick-country-btn" data-code="DE">
+        <img src="https://flagcdn.com/de.svg" alt="Allemagne">
+        <span>Allemagne</span>
+      </button>
+      <button type="button" class="quick-country-btn" data-code="US">
+        <img src="https://flagcdn.com/us.svg" alt="États-Unis">
+        <span>États-Unis</span>
+      </button>
+      <button type="button" class="quick-country-btn" data-code="CA">
+        <img src="https://flagcdn.com/ca.svg" alt="Canada">
+        <span>Canada</span>
+      </button>
+      <button type="button" class="quick-country-btn" data-code="DK">
+        <img src="https://flagcdn.com/dk.svg" alt="Danemark">
+        <span>Danemark</span>
+      </button>
+      <button type="button" class="quick-country-btn" data-code="SE">
+        <img src="https://flagcdn.com/se.svg" alt="Suède">
+        <span>Suède</span>
+      </button>
+      <button type="button" class="quick-country-btn" data-code="IN">
+        <img src="https://flagcdn.com/in.svg" alt="Inde">
+        <span>Inde</span>
+      </button>
+      <button type="button" class="quick-country-btn" data-code="CN">
+        <img src="https://flagcdn.com/cn.svg" alt="Chine">
+        <span>Chine</span>
+      </button>
+      <button type="button" class="quick-country-btn" data-code="JP">
+        <img src="https://flagcdn.com/jp.svg" alt="Japon">
+        <span>Japon</span>
+      </button>
+      <button type="button" class="quick-country-btn" data-code="KR">
+        <img src="https://flagcdn.com/kr.svg" alt="Corée du Sud">
+        <span>Corée du Sud</span>
+      </button>
+      <button type="button" class="quick-country-btn" data-code="AU">
+        <img src="https://flagcdn.com/au.svg" alt="Australie">
+        <span>Australie</span>
+      </button>
+      <button type="button" class="quick-country-btn" data-code="BR">
+        <img src="https://flagcdn.com/br.svg" alt="Brésil">
+        <span>Brésil</span>
+      </button>
+    </div>
+
+    <div class="period-bar" id="periodBar">
+      <div class="period-cells" id="periodCells"></div>
+    </div>
+
+  </div>
+
+<div class="app">
+  <div id="fileBanner" class="file-banner" hidden>
+    <span>Pour conserver vos films dans un fichier <strong>cine-liste.json</strong> :</span>
+    <button type="button" id="bannerNewFile">🆕 Créer un fichier vide</button>
+    <button type="button" id="bannerConnectFile">📁 Connecter un fichier existant</button>
+    <button type="button" id="bannerDismiss" class="file-banner-dismiss">Plus tard</button>
+  </div>
+  <nav class="tabs">
+    <button data-tab="search" class="tab active">Filtre (<span id="searchCount">0</span>)</button>
+    <button data-tab="library" class="tab">Ma bibliothèque (<span id="libCount">0</span>)</button>
+  </nav>
+
+  <section id="searchTab" class="tab-panel active">
+    <div id="results" class="media-list"></div>
+    <p id="scrollLoading" class="loading" hidden>Chargement…</p>
+    <div id="scrollSentinel"></div>
+  </section>
+
+  <section id="libraryTab" class="tab-panel">
+    <div class="lib-toolbar">
+      <input type="text" id="libraryTitleFilter" placeholder="Filtrer par titre…" autocomplete="off">
+      <button id="connectFile" type="button">📁 Connecter cine-liste.json</button>
+      <button id="newFile" type="button">🆕 Nouveau fichier</button>
+      <button id="exportFile" type="button">💾 Sauvegarder ma sélection</button>
+      <label class="import-label">⬆ Importer<input type="file" id="importFile" accept="application/json" hidden></label>
+      <span id="fileStatus"></span>
+    </div>
+    <div id="libraryResults" class="media-list"></div>
+  </section>
+</div>
+
+<!-- Modal des Paramètres -->
+<div id="settingsModal" class="modal" hidden>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>⚙️ Paramètres</h2>
+      <button type="button" class="close-modal" id="closeSettingsBtn" aria-label="Fermer les paramètres">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p id="apiKeyNotice" class="setting-notice" hidden>Une clé TMDB est nécessaire pour utiliser l'application. Elle est gratuite sur themoviedb.org (Paramètres → API).</p>
+      <div class="setting-item">
+        <label for="tmdbKeyInput">Clé API TMDB :</label>
+        <input type="password" id="tmdbKeyInput" placeholder="Obligatoire" autocomplete="new-password" spellcheck="false">
+        <p class="setting-help">Stockée uniquement dans ce navigateur (jamais envoyée ailleurs que vers TMDB).</p>
+      </div>
+      <div class="setting-item">
+        <label for="omdbKeyInput">Clé API OMDb :</label>
+        <input type="password" id="omdbKeyInput" placeholder="Optionnelle" autocomplete="new-password" spellcheck="false">
+        <p class="setting-help">Optionnelle : sert à compléter la note IMDb des films peu votés (1 000 requêtes/jour gratuites).</p>
+      </div>
+      <label class="setting-toggle"><input type="checkbox" id="showKeysToggle"> Afficher les clés</label>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-save" id="saveSettingsBtn">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="config.js?v=5"></script>
+<script src="app.js?v=17"></script>
